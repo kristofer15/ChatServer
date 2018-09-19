@@ -38,56 +38,92 @@ int read_from_client (int filedes) {
 }
 
 int main(int argc, char* argv[]) {
-    int sock, other_sock;
+    int other_sock;
     socklen_t clilen;
-    struct sockaddr_in serv_addr, cli_addr;
+    struct sockaddr_in cli_addr;
     struct timeval t;
-    fd_set socks;
+    char buffer[256];
 
-    sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    fd_set sock_set;
 
+    int socks[3];
+    int top_sock = 0;
+    FD_ZERO(&sock_set);
 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+    for(int i = 0; i < 3; ++i) {
+        struct sockaddr_in serv_addr;
+        int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        top_sock = std::max(top_sock, sock);
+        socks[i] = sock;
 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
+        bzero((char *) &serv_addr, sizeof(serv_addr));
 
-    if(bind(sock  , (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        std::cout << "Failed to bind" << std::endl;
-        exit(0);
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        serv_addr.sin_port = htons(PORT + i);
+
+        if(bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+            std::cout << "Failed to bind" << std::endl;
+            exit(0);
+        }
+
+        if(listen(sock, 1) < 0) {
+            std::cout << "Failed to listen" << std::endl;
+            exit(0);
+        }
+
+        FD_SET(sock, &sock_set);
     }
 
-    if(listen(sock, 1) < 0) {
-        std::cout << "Failed to listen" << std::endl;
-        exit(0);
-    }
-
-    /* Initialize the set of active sockets. */
-    FD_ZERO(&socks);
-    FD_SET(sock, &socks);
     t.tv_sec = 10;
 
     while(true) {
-        std::cout << "Socket: " << sock << std::endl;
+
+        std::cout << std::endl;
+        std::cout << "Selecting" << std::endl;
+        std::cout << "Top sock: " << top_sock << std::endl;
         
-        if(select(sock+1, &socks, NULL, NULL, NULL) < 0) {
+        if(select(top_sock+1, &sock_set, NULL, NULL, NULL) < 0) {
             return 0;
         }
 
-        if(FD_ISSET(sock, &socks)) {
-            std::cout << "Socket received a connection" << std::endl;
-            clilen = sizeof(cli_addr);
-            other_sock = accept(sock, (struct sockaddr *) &cli_addr, &clilen);
+        for(int i = 0; i < 3; ++i) {
+            int sock = socks[i];
+            
+            std::cout << "Socket: " << sock << std::endl;
 
-            if(other_sock < 0) {
-                std::cout << "Failed to accept" << std::endl;
+            if(FD_ISSET(sock, &sock_set)) {
+                std::cout << "Socket received a connection" << std::endl;
+                clilen = sizeof(cli_addr);
+
+                other_sock = accept(sock, (struct sockaddr *) &cli_addr, &clilen);
+
+                if(other_sock < 0) {
+                    std::cout << "Failed to accept" << std::endl;
+                }
+                else {
+                    std::cout << "Accept successful" << std::endl;
+
+
+                    bzero(buffer,256);
+
+                    int n = read(other_sock, buffer, 255);
+
+                    std::cout << "Received " << n << " bytes" << std::endl;
+
+                    if(n > 0) {
+                        std::cout << "Incoming message: " << buffer << std::endl;
+                    }
+                }
             }
             else {
-                std::cout << "Accept successful" << std::endl;
+                std::cout << "Nothing on " << sock << std::endl;
+            // Reset the sock
+            FD_SET(sock, &sock_set);
             }
         }
 
     }
+
+    close(other_sock);
 }
