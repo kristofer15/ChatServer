@@ -1,1 +1,1 @@
-g++ server.cpp -o server
+g++ -std=c++11 server.cpp settings.h -o server

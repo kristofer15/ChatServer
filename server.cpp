@@ -12,29 +12,56 @@
 
 #include <iostream>
 
+#include "settings.h"
+
 #define PORT    5555
 #define MAXMSG  512
 
+
 // Nabbed from: https://www.gnu.org/software/libc/manual/html_node/Server-Example.html
-int read_from_client (int filedes) {
+int read_from_client(int filedes) {
     char buffer[MAXMSG];
     int nbytes;
 
-    nbytes = read (filedes, buffer, MAXMSG);
+    nbytes = read(filedes, buffer, MAXMSG);
     if (nbytes < 0) {
         /* Read error. */
-        perror ("read");
-        exit (EXIT_FAILURE);
+        perror("read");
+        exit(EXIT_FAILURE);
         }
-    else if (nbytes == 0) {
+    else if(nbytes == 0) {
         /* End-of-file. */
         return -1;
     }
     else {
         /* Data read. */
-        fprintf (stderr, "Server: got message: `%s'\n", buffer);
+        fprintf(stderr, "Server: got message: `%s'\n", buffer);
         return 0;
     }
+}
+
+void parse_message(std::string message) {
+
+    // .compare returns 0 with identical strings
+    if(message.compare("ID") == 0) {
+        std::cout << settings::get_id() << std::endl;
+    }
+    else if(message.compare("CHANGE ID") == 0) {
+        settings::set_new_id();
+        std::cout << "Set new id: " << settings::get_id() << std::endl;
+    }
+    else {
+        std::cout << "MESSAGE IS: " << message << std::endl;
+    }
+}
+
+std::string trim_newline(std::string s) {
+    std::string trimmed = s;
+    while(trimmed[trimmed.length()-1] == '\n') {
+        trimmed.erase(trimmed.length()-1);
+    }
+
+    return trimmed;
 }
 
 int main(int argc, char* argv[]) {
@@ -43,6 +70,7 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in cli_addr;
     struct timeval t;
     char buffer[256];
+    std::string id = settings::get_id();
 
     fd_set sock_set;
 
@@ -112,14 +140,15 @@ int main(int argc, char* argv[]) {
                     std::cout << "Received " << n << " bytes" << std::endl;
 
                     if(n > 0) {
-                        std::cout << "Incoming message: " << buffer << std::endl;
+                        parse_message(trim_newline(buffer));
                     }
                 }
             }
             else {
                 std::cout << "Nothing on " << sock << std::endl;
-            // Reset the sock
-            FD_SET(sock, &sock_set);
+                
+                // Reset the sock
+                FD_SET(sock, &sock_set);
             }
         }
 
