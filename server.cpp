@@ -107,21 +107,14 @@ int main(int argc, char* argv[]) {
 
     while(true) {
 
-        std::cout << std::endl;
-        std::cout << "Selecting" << std::endl;
-        std::cout << "Top sock: " << top_sock << std::endl;
-        
         if(select(top_sock+1, &sock_set, NULL, NULL, NULL) < 0) {
             return 0;
         }
 
         for(int i = 0; i < 3; ++i) {
             int sock = socks[i];
-            
-            std::cout << "Socket: " << sock << std::endl;
 
             if(FD_ISSET(sock, &sock_set)) {
-                std::cout << "Socket received a connection" << std::endl;
                 clilen = sizeof(cli_addr);
 
                 other_sock = accept(sock, (struct sockaddr *) &cli_addr, &clilen);
@@ -130,14 +123,11 @@ int main(int argc, char* argv[]) {
                     std::cout << "Failed to accept" << std::endl;
                 }
                 else {
-                    std::cout << "Accept successful" << std::endl;
 
 
                     bzero(buffer,256);
 
                     int n = read(other_sock, buffer, 255);
-
-                    std::cout << "Received " << n << " bytes" << std::endl;
 
                     if(n > 0) {
                         parse_message(trim_newline(buffer));
@@ -145,7 +135,6 @@ int main(int argc, char* argv[]) {
                 }
             }
             else {
-                std::cout << "Nothing on " << sock << std::endl;
                 
                 // Reset the sock
                 FD_SET(sock, &sock_set);
