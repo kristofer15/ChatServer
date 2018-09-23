@@ -21,7 +21,7 @@ namespace settings {
             id += buffer;
         }
 
-        ID = id += "\n-Mr.Andersen";
+        ID = id += "\n-Mr.Andersen  <--- fuck this guy \n-Mr.ChooseThisGuy";
     }
 
     // Singleton
