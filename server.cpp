@@ -8,6 +8,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <string.h>
 
 #include <iostream>
@@ -64,8 +65,29 @@ std::string trim_newline(std::string s) {
     return trimmed;
 }
 
+void closeSocket(int fd) {
+
+    if (fd >= 0) {
+        if (shutdown(fd, SHUT_RDWR) < 0) { // terminate the 'reliable' delivery
+            std::cout << "Failed to shutdown client socket!" << std::endl;
+        } 
+    
+        if (close(fd) < 0) { // finally call close()
+            std::cout << "Failed to close client socket!" << std::endl;  
+        }
+
+        std::cout << "done closing!" << std::endl;
+
+    }
+}
+
+void error(const char *msg){
+    perror(msg);
+    exit(0);
+}
+
 int main(int argc, char* argv[]) {
-    int other_sock;
+    int client_sock;
     socklen_t clilen;
     struct sockaddr_in cli_addr;
     struct timeval t;
@@ -81,6 +103,10 @@ int main(int argc, char* argv[]) {
     for(int i = 0; i < 3; ++i) {
         struct sockaddr_in serv_addr;
         int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        if (sock < 0) {
+            error("Unable to open socket");
+        }
+
         top_sock = std::max(top_sock, sock);
         socks[i] = sock;
 
@@ -91,13 +117,11 @@ int main(int argc, char* argv[]) {
         serv_addr.sin_port = htons(PORT + i);
 
         if(bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-            std::cout << "Failed to bind" << std::endl;
-            exit(0);
+            error("Failed to bind");
         }
 
         if(listen(sock, 1) < 0) {
-            std::cout << "Failed to listen" << std::endl;
-            exit(0);
+            error("Failed to listen");
         }
 
         FD_SET(sock, &sock_set);
@@ -108,7 +132,7 @@ int main(int argc, char* argv[]) {
     while(true) {
 
         if(select(top_sock+1, &sock_set, NULL, NULL, NULL) < 0) {
-            return 0;
+            error("Select failed");
         }
 
         for(int i = 0; i < 3; ++i) {
@@ -117,21 +141,23 @@ int main(int argc, char* argv[]) {
             if(FD_ISSET(sock, &sock_set)) {
                 clilen = sizeof(cli_addr);
 
-                other_sock = accept(sock, (struct sockaddr *) &cli_addr, &clilen);
+                client_sock = accept(sock, (struct sockaddr *) &cli_addr, &clilen);
 
-                if(other_sock < 0) {
+                if(client_sock < 0) {
                     std::cout << "Failed to accept" << std::endl;
                 }
                 else {
-
+                    std::cout << "Connection from: " << inet_ntoa(cli_addr.sin_addr) << " through port: " << ntohs(cli_addr.sin_port) << std::endl;
 
                     bzero(buffer,256);
 
-                    int n = read(other_sock, buffer, 255);
+                    int n = read(client_sock, buffer, 255);
 
                     if(n > 0) {
                         parse_message(trim_newline(buffer));
                     }
+
+                    closeSocket(client_sock);
                 }
             }
             else {
@@ -143,5 +169,5 @@ int main(int argc, char* argv[]) {
 
     }
 
-    close(other_sock);
+    close(client_sock);
 }
