@@ -69,14 +69,14 @@ void close_socket(int fd) {
 
     if (fd >= 0) {
         if (shutdown(fd, SHUT_RDWR) < 0) { // terminate the 'reliable' delivery
-            std::cout << "Failed to shutdown client socket!" << std::endl;
+            std::cout << "Failed to shutdown client socket" << std::endl;
         } 
     
         if (close(fd) < 0) { // finally call close()
-            std::cout << "Failed to close client socket!" << std::endl;  
+            std::cout << "Failed to close client socket" << std::endl;  
         }
 
-        std::cout << "done closing!" << std::endl;
+        std::cout << "done closing" << std::endl;
 
     }
 }
