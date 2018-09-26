@@ -14,6 +14,7 @@
 #include <map>
 
 #include <iostream>
+#include <sstream>
 
 #include "settings.h"
 
@@ -43,7 +44,7 @@ int read_from_client(int filedes) {
     }
 }
 
-std::string parse_message(std::string message) {
+std::string parse_message(int client_sock, std::string message) {
 
     // .compare returns 0 with identical strings
     if(message.compare("ID") == 0) {
@@ -62,8 +63,38 @@ std::string parse_message(std::string message) {
         if(std::count(message.begin(), message.end(), ' ') == 1) {
             std::string user = message.substr(message.rfind(" ") + 1);
 
-            // TODO: Replace 0 with client identifier
-            settings::get_users().insert(std::make_pair(0, user));
+            if(user.compare("ALL") == 0) {
+                return "Stop that";
+            }
+
+            settings::get_users().insert(std::make_pair(user, client_sock));
+
+            return user + " connected\n";
+        }
+    }
+
+    if(message.compare("WHO") == 0) {
+        std::stringstream connectedUsers;
+        connectedUsers << "Connected users: \n";
+
+        for(auto pair : settings::get_users()) {
+            connectedUsers << pair.first + "\n";
+        }
+
+        return connectedUsers.str();
+    }
+
+    if(message.compare(0, 4, "MSG ") == 0) {
+        if(std::count(message.begin(), message.end(), ' ') == 1) {
+            std::string user = message.substr(message.rfind(" ") + 1);
+
+            if(settings::get_users().find(user) != settings::get_users().end()) {
+                write(settings::get_users()[user], message.c_str(), message.length());
+                return "Message to: " + user + "\n";
+            }
+            else {
+                return "No such user\n";
+            }
         }
     }
 
@@ -106,7 +137,6 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in cli_addr;
     struct timeval t;
     char buffer[256];
-    std::string id = settings::get_id();
 
     fd_set sock_set;
 
@@ -129,6 +159,10 @@ int main(int argc, char* argv[]) {
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(PORT + i);
+
+        if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &serv_addr, sizeof(int)) == -1) {
+            exit(0);
+        }
 
         if(bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
             error("Failed to bind");
@@ -168,11 +202,14 @@ int main(int argc, char* argv[]) {
                     int n = read(client_sock, buffer, 255);
 
                     if(n > 0) {
-                        std::string response = parse_message(trim_newline(buffer));
+                        std::cout << "Received message" << std::endl;
+                        std::string response = parse_message(client_sock, trim_newline(buffer));
                         write(client_sock, response.c_str(), response.length());
+                        
                     }
 
-                    close_socket(client_sock);
+                    FD_SET(client_sock, &sock_set);
+                    // close_socket(client_sock);
                 }
             }
             else {

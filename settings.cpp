@@ -9,7 +9,7 @@ namespace settings {
 
         // Classless privates
         std::string ID = "";
-        std::map<int, std::string> users = {};
+        std::map<std::string, int> users = {};
     };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
@@ -37,7 +37,7 @@ namespace settings {
         return ID;
     }
 
-    std::map<int, std::string>& get_users() {
+    std::map<std::string, int>& get_users() {
         return users;
     }
 };
