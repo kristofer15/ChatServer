@@ -41,18 +41,18 @@ int read_from_client(int filedes) {
     }
 }
 
-void parse_message(std::string message) {
+std::string parse_message(std::string message) {
 
     // .compare returns 0 with identical strings
     if(message.compare("ID") == 0) {
-        std::cout << settings::get_id() << std::endl;
+        return settings::get_id() + "\n";
     }
     else if(message.compare("CHANGE ID") == 0) {
         settings::set_new_id();
-        std::cout << "Set new id: " << settings::get_id() << std::endl;
+        return "Set new id: " + settings::get_id() + "\n";
     }
     else {
-        std::cout << "MESSAGE IS: " << message << std::endl;
+        return "Your answer: " + message + "\nCorrect answer: " + message + "\n";
     }
 }
 
@@ -65,7 +65,7 @@ std::string trim_newline(std::string s) {
     return trimmed;
 }
 
-void closeSocket(int fd) {
+void close_socket(int fd) {
 
     if (fd >= 0) {
         if (shutdown(fd, SHUT_RDWR) < 0) { // terminate the 'reliable' delivery
@@ -154,10 +154,11 @@ int main(int argc, char* argv[]) {
                     int n = read(client_sock, buffer, 255);
 
                     if(n > 0) {
-                        parse_message(trim_newline(buffer));
+                        std::string response = parse_message(trim_newline(buffer));
+                        write(client_sock, response.c_str(), response.length());
                     }
 
-                    closeSocket(client_sock);
+                    close_socket(client_sock);
                 }
             }
             else {
