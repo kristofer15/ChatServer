@@ -1,3 +1,4 @@
+#include <sstream>
 #include "settings.h"
 
 namespace settings {
@@ -8,7 +9,7 @@ namespace settings {
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
     void set_new_id() {
-        std::string id = "";
+        std::stringstream id;
         char buffer[128];
 
         FILE* pipe = popen("fortune -s", "r");
@@ -18,10 +19,11 @@ namespace settings {
         }
         
         while (fgets(buffer, 128, pipe) != NULL) {
-            id += buffer;
+            id << buffer;
         }
 
-        ID = id += "\n-Mr.Andersen  <--- fuck this guy \n-Mr.ChooseThisGuy";
+        id << time(NULL) << std::endl << "Group x";
+        ID = id.str();
     }
 
     // Singleton
