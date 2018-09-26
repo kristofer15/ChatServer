@@ -5,7 +5,12 @@ namespace settings {
 
     // Kind of like a javascript closure
     // Absolute nonsense that is.
-    namespace { std::string ID = ""; };
+    namespace {
+
+        // Classless privates
+        std::string ID = "";
+        std::map<int, std::string> users = {};
+    };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
     void set_new_id() {
@@ -30,5 +35,9 @@ namespace settings {
     std::string get_id() {
         if(ID == "") { set_new_id(); }
         return ID;
+    }
+
+    std::map<int, std::string>& get_users() {
+        return users;
     }
 };

@@ -10,6 +10,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <algorithm>
+#include <map>
 
 #include <iostream>
 
@@ -47,13 +49,25 @@ std::string parse_message(std::string message) {
     if(message.compare("ID") == 0) {
         return settings::get_id() + "\n";
     }
-    else if(message.compare("CHANGE ID") == 0) {
+
+    if(message.compare("CHANGE ID") == 0) {
         settings::set_new_id();
         return "Set new id: " + settings::get_id() + "\n";
     }
-    else {
-        return "Your answer: " + message + "\nCorrect answer: " + message + "\n";
+
+    // Starts with "CONNECT "
+    if(message.compare(0, 8, "CONNECT ") == 0) {
+
+        // Only accept connections containing a single space
+        if(std::count(message.begin(), message.end(), ' ') == 1) {
+            std::string user = message.substr(message.rfind(" ") + 1);
+
+            // TODO: Replace 0 with client identifier
+            settings::get_users().insert(std::make_pair(0, user));
+        }
     }
+
+    return "Your answer: " + message + "\nCorrect answer: " + message + "\n";
 }
 
 std::string trim_newline(std::string s) {
