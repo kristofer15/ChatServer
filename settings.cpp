@@ -13,6 +13,10 @@ namespace settings {
         std::map<std::string, int> knock_status = {};
         std::map<int, std::string> client_sockets = {};
         std::vector<int> server_sockets = {};
+
+        std::map<std::string, std::pair<int, time_t>> knockers = {};
+        fd_set socket_set;
+        int top_socket;
     };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
@@ -56,4 +60,15 @@ namespace settings {
         return server_sockets;
     }
 
+    std::map<std::string, std::pair<int, time_t>>& get_knockers() {
+        return knockers;
+    }
+
+    fd_set& get_socket_set() {
+        return socket_set;
+    }
+
+    int& get_top_socket() {
+        return top_socket;
+    }
 };

@@ -42,6 +42,23 @@ void closeSocket(int fd) {
     }
 }
 
+void disconnect_user(int socket) {
+    // if socket exists in users, remove
+    std::string username = settings::get_client_sockets()[socket];
+    settings::get_users().erase(username);
+
+    // remove socket from client_socket map
+    settings::get_client_sockets().erase(socket);
+
+    // clear socket from socket_set
+    FD_CLR(socket, &settings::get_socket_set());
+        
+    // close socket
+    closeSocket(socket);
+
+    std::cout << "User " << username << " disconnected" << std::endl;
+}
+
 std::string trim_newline(std::string s) {
     std::string trimmed = s;
     while(trimmed[trimmed.length()-1] == '\n') {
@@ -107,10 +124,14 @@ std::string parse_message(int client_sock, std::string message) {
         }
     }
 
+    if(message.compare("LEAVE") == 0) {
+        disconnect_user(client_sock);
+    }
+
     return "Your answer: " + message + "\nCorrect answer: " + message + "\n";
 }
 
-void setup_server_socks(int& top_sock) {
+void setup_server_socks() {
     /*
      * Creates 3 server sockets open for connections.
      * Returns updated top socket index
@@ -130,7 +151,7 @@ void setup_server_socks(int& top_sock) {
         }           
 
         // update top socket index
-        top_sock = std::max(top_sock, sock);
+        settings::get_top_socket() = std::max(settings::get_top_socket(), sock);
 
         // add newly created socket to list of server sockets
         settings::get_server_sockets().push_back(sock);
@@ -150,29 +171,29 @@ void setup_server_socks(int& top_sock) {
     }
 }
 
-void reset_socket_set(fd_set& sock_set) {
+void reset_socket_set() {
     // clear sock_set
-    FD_ZERO(&sock_set);
+    FD_ZERO(&settings::get_socket_set());
 
     // reset client sockets
     for(std::pair<int, std::string> client : settings::get_client_sockets()) {
         // if valid file descriptor add to set
         int socket = client.first;
         if(socket > 0) {
-            FD_SET(socket, &sock_set);
+            FD_SET(socket, &settings::get_socket_set());
         }
     }
 
     // reset server sockets
-    for(int sock : settings::get_server_sockets()) {
+    for(int socket : settings::get_server_sockets()) {
         // if valid file descriptor add to set
-        if(sock > 0) {
-            FD_SET(sock, &sock_set);
+        if(socket > 0) {
+            FD_SET(socket, &settings::get_socket_set());
         }
     }
 }
 
-void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
+void respond_to_knock(int receiving_socket) {
     /*
      * Responds to knock on receiving server socket.
      * Updates knock_status for knocking IP.
@@ -221,7 +242,7 @@ void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
         if(settings::get_knock_status()[client_address] == 2) {
             // add new socket to map and update top_socket
             settings::get_client_sockets()[client_sock] = "anon";
-            top_sock = std::max(top_sock, client_sock);      
+            settings::get_top_socket() = std::max(settings::get_top_socket(), client_sock);      
 
             std::cout << "IP " << client_address << " connected" << std::endl;
 
@@ -237,19 +258,17 @@ void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
     }
 }
 
-void remove_socket(int socket, fd_set& sock_set) {
-    // if socket exists in users, remove
-    std::string username = settings::get_client_sockets()[socket];
-    settings::get_users().erase(username);
-
-    // remove socket from client_socket map
-    settings::get_client_sockets().erase(socket);
-
-    // clear socket from socket_set
-    FD_CLR(socket,&sock_set);
-
-    // close socket
-    closeSocket(socket);
+void respond_to_message(int client_socket, std::string username, char* buffer) {
+    //clear buffer
+    bzero(buffer,256);
+    // zero indicates end of file. AKA client disconnected
+    if(read(client_socket, buffer, 255) == 0) {
+        disconnect_user(client_socket);
+    }
+    else {
+        std::string response = parse_message(client_socket, trim_newline(buffer));
+        write(client_socket, response.c_str(), response.length());  
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -258,47 +277,41 @@ int main(int argc, char* argv[]) {
     struct timeval t;
     char buffer[256];
 
-    fd_set sock_set; 
-    int top_sock = 0;
-
-    setup_server_socks(top_sock);
+    setup_server_socks();
 
     t.tv_sec = 10;
 
     while(true) {
 
         // reset socket set for further messages/connections
-        reset_socket_set(sock_set);
+        reset_socket_set();
         
         std::cout << "Wating for activity on sockets" << std::endl;
-        if(select(top_sock+1, &sock_set, NULL, NULL, NULL) < 0) {
+        if(select(settings::get_top_socket()+1, &settings::get_socket_set(), NULL, NULL, NULL) < 0) {
             error("Select failed");
         }
 
         // connection to one of the server sockets
         for(int server_socket : settings::get_server_sockets()) {
-            if(FD_ISSET(server_socket, &sock_set)) {
-                respond_to_knock(server_socket, top_sock, sock_set);
+            if(FD_ISSET(server_socket, &settings::get_socket_set())) {
+                respond_to_knock(server_socket);
             }
         }
 
-        // message from user without username
+        int client_socket = 0;
+        std::string username = "";
+        // find client that sent message
         for(std::pair<int, std::string> client : settings::get_client_sockets()) {
-            int client_socket = client.first;
-
-            if(FD_ISSET(client_socket, &sock_set)) {
-                //clear buffer
-                bzero(buffer,256);
-                // zero indicates end of file. AKA client disconnected
-                if(read(client_socket, buffer, 255) == 0) {
-                    remove_socket(client_socket, sock_set);
-                    std::cout << "User " << client.second << " disconnected" << std::endl;
-                }
-                else {
-                    std::string response = parse_message(client_socket, trim_newline(buffer));
-                    write(client_socket, response.c_str(), response.length());  
-                }
+            if(FD_ISSET(client.first, &settings::get_socket_set())) {        
+                client_socket = client.first;
+                username = client.second;
             }
         }
+
+        // respond to message
+        if(FD_ISSET(client_socket, &settings::get_socket_set())) {
+            respond_to_message(client_socket, username, buffer);
+        }
+        
     }
 }
