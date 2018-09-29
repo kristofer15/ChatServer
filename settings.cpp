@@ -9,8 +9,14 @@ namespace settings {
 
         // Classless privates
         std::string ID = "";
+
+        // User name - fd
         std::map<std::string, int> users = {};
+
+        // IP - status
         std::map<std::string, int> knock_status = {};
+
+        // fd - username
         std::map<int, std::string> client_sockets = {};
         std::vector<int> server_sockets = {};
 

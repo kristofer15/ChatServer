@@ -22,8 +22,7 @@
 #define PORT    5555
 #define MAXMSG  512
 
-
-void error(const char *msg){
+void error(const char *msg) {
     perror(msg);
     exit(0);
 }
@@ -32,7 +31,7 @@ void closeSocket(int fd) {
     if (fd >= 0) {
         if (shutdown(fd, SHUT_RDWR) < 0) { // terminate the 'reliable' delivery
             error("Unable to shutdown socket");
-        } 
+        }
     
         if (close(fd) < 0) { // finally call close()
             error("Unable to close socket");
@@ -66,6 +65,21 @@ std::string trim_newline(std::string s) {
     }
 
     return trimmed;
+}
+
+void remove_socket(int socket, fd_set& sock_set) {
+    // if socket exists in users, remove
+    std::string username = settings::get_client_sockets()[socket];
+    settings::get_users().erase(username);
+
+    // remove socket from client_socket map
+    settings::get_client_sockets().erase(socket);
+
+    // clear socket from socket_set
+    FD_CLR(socket, &sock_set);
+
+    // close socket
+    closeSocket(socket);
 }
 
 std::string parse_message(int client_sock, std::string message) {
@@ -112,11 +126,18 @@ std::string parse_message(int client_sock, std::string message) {
 
     if(message.compare(0, 4, "MSG ") == 0) {
         if(std::count(message.begin(), message.end(), ' ') == 1) {
-            std::string user = message.substr(message.rfind(" ") + 1);
+            std::string user = message.substr(message.rfind(' ') + 1);
+
+            if(user.compare("ALL") == 0) {
+                for(auto name_socket : settings::get_users()) {
+                    write(name_socket.second, (message + '\n').c_str(), message.length()+1);
+                    return "Messaged all users" + '\n';
+                }
+            }
 
             if(settings::get_users().find(user) != settings::get_users().end()) {
-                write(settings::get_users()[user], message.c_str(), message.length());
-                return "Message to: " + user + "\n";
+                write(settings::get_users()[user], (message + '\n').c_str(), message.length()+1);
+                return "Message to: " + user + '\n';
             }
             else {
                 return "No such user\n";
