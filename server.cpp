@@ -153,16 +153,9 @@ void reset_socket_set(fd_set& sock_set) {
     FD_ZERO(&sock_set);
 
     // reset client sockets
-    for(std::pair<std::string, int> user : settings::get_users()) {
+    for(std::pair<int, std::string> client : settings::get_client_sockets()) {
         // if valid file descriptor add to set
-        int socket = user.second;
-        if(socket > 0) {
-            FD_SET(socket, &sock_set);
-        }
-    }
-
-    // reset anon sockets
-    for(int socket : settings::get_anon_sockets()) {
+        int socket = client.first;
         if(socket > 0) {
             FD_SET(socket, &sock_set);
         }
@@ -182,7 +175,7 @@ void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
      * Responds to knock on receiving server socket.
      * Updates knock_status for knocking IP.
      * If knock_status completed, update sock_set and top_socket, 
-     * and add new socket to anon_socket list.
+     * and add new socket to client_socket map with username 'anon'.
      */ 
 
     socklen_t clilen;
@@ -224,11 +217,10 @@ void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
     if(receiving_socket == settings::get_server_sockets()[2]) {
         // if key exists and second knock completed
         if(settings::get_knock_status()[client_address] == 2) {
-            // add new socket to list and update top_socket
-            //settings::get_client_sockets()[client_sock] = "anon";
-            settings::get_anon_sockets().push_back(client_sock);
+            // add new socket to map and update top_socket
+            settings::get_client_sockets()[client_sock] = "anon";
+            top_sock = std::max(top_sock, client_sock);      
 
-            top_sock = std::max(top_sock, client_sock);         
             std::cout << "IP " << client_address << " connected" << std::endl;
 
             // knock completed, remove from map
@@ -243,34 +235,19 @@ void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
     }
 }
 
-void remove_anon(int anon_socket, fd_set& sock_set) {
-    // remove socket from list
-    settings::get_anon_sockets()
-        .erase( 
-            std::remove(settings::get_anon_sockets().begin(), 
-                        settings::get_anon_sockets().end(), 
-                        anon_socket), 
-            settings::get_anon_sockets().end());
-
-    // clear socket from socket_set
-    FD_CLR(anon_socket,&sock_set);
-
-    // close socket
-    closeSocket(anon_socket);
-}
-
-void remove_user(std::string username, fd_set& sock_set) {
-    
-    int user_socket = settings::get_users()[username];
-    
-    // remove socket from map
+void remove_socket(int socket, fd_set& sock_set) {
+    // if socket exists in users, remove
+    std::string username = settings::get_client_sockets()[socket];
     settings::get_users().erase(username);
 
+    // remove socket from client_socket map
+    settings::get_client_sockets().erase(socket);
+
     // clear socket from socket_set
-    FD_CLR(user_socket,&sock_set);
+    FD_CLR(socket,&sock_set);
 
     // close socket
-    closeSocket(user_socket);
+    closeSocket(socket);
 }
 
 int main(int argc, char* argv[]) {
@@ -304,32 +281,16 @@ int main(int argc, char* argv[]) {
         }
 
         // message from user without username
-        for(int anon_socket : settings::get_anon_sockets()) {
-            if(FD_ISSET(anon_socket, &sock_set)) {
-                //clear buffer
-                bzero(buffer,256);
-                // zero indicates end of file. AKA client disconnected
-                if(read(anon_socket, buffer, 255) == 0) {
-                    remove_anon(anon_socket, sock_set);
-                    std::cout << "Anon disconnected" << std::endl; 
-                }
-                else {
-                    std::cout << "Message is " << trim_newline(buffer) << std::endl;
-                }
-            }
-        }
+        for(std::pair<int, std::string> client : settings::get_client_sockets()) {
+            int client_socket = client.first;
 
-        // message from user
-        for(std::pair<std::string, int> user : settings::get_users()) {
-            std::string username = user.first;
-            int user_socket = user.second;
-            if(FD_ISSET(user_socket, &sock_set)) {
+            if(FD_ISSET(client_socket, &sock_set)) {
                 //clear buffer
                 bzero(buffer,256);
                 // zero indicates end of file. AKA client disconnected
-                if(read(user_socket, buffer, 255) == 0) {
-                    remove_user(username, sock_set);
-                    std::cout << "User disconnected" << std::endl; 
+                if(read(client_socket, buffer, 255) == 0) {
+                    remove_socket(client_socket, sock_set);
+                    std::cout << "User " << client.second << " disconnected" << std::endl;
                 }
                 else {
                     std::cout << "Message is " << trim_newline(buffer) << std::endl;

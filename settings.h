@@ -8,6 +8,6 @@ namespace settings {
     std::string get_id();
     std::map<std::string, int>& get_knock_status();
     std::map<std::string, int>& get_users();
+    std::map<int, std::string>& get_client_sockets();
     std::vector<int>& get_server_sockets();
-    std::vector<int>& get_anon_sockets();
 };
