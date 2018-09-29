@@ -28,8 +28,6 @@ void help(std::string file_name="client") {
     std::cout << "=== Knockmaster 5000 ===" << std::endl;
     std::cout << get_dino() << std::endl;
 
-
-
     std::cout << "Knock a sequence of ports on a specified server" << std::endl
                 << "Communicate once connection has been established" << std::endl
                 << "Usage:" << std::endl
