@@ -11,8 +11,8 @@ namespace settings {
         std::string ID = "";
         std::map<std::string, int> users = {};
         std::map<std::string, int> knock_status = {};
-        std::map<int, std::string> client_sockets = {};
         std::vector<int> server_sockets = {};
+        std::vector<int> anon_sockets = {};
     };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
@@ -40,19 +40,19 @@ namespace settings {
         return ID;
     }
 
-    std::map<std::string, int>& get_users() {
-        return users;
-    }
-
-    std::map<int, std::string>& get_client_sockets() {
-        return client_sockets;
-    }
-
     std::map<std::string, int>& get_knock_status() {
         return knock_status;
     }
 
+    std::map<std::string, int>& get_users() {
+        return users;
+    }
+
     std::vector<int>& get_server_sockets() {
         return server_sockets;
+    }
+
+    std::vector<int>& get_anon_sockets() {
+        return anon_sockets;
     }
 };
