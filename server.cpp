@@ -132,10 +132,10 @@ std::string parse_message(int client_sock, std::string message) {
             if(user.compare("ALL") == 0) {
                 for(auto name_socket : settings::get_users()) {
                     write(name_socket.second, (message + '\n').c_str(), message.length()+1);
-                    return "Messaged all users" + '\n';
                 }
-            }
 
+                return "Messaged all users" + '\n';
+            }
             if(settings::get_users().find(user) != settings::get_users().end()) {
                 write(settings::get_users()[user], (message + '\n').c_str(), message.length()+1);
                 return "Message to: " + user + '\n';
