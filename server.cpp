@@ -74,7 +74,9 @@ std::string parse_message(int client_sock, std::string message) {
                 return "Stop that";
             }
 
+            // create new user and update client_socket map
             settings::get_users().insert(std::make_pair(user, client_sock));
+            settings::get_client_sockets()[client_sock] = user;
 
             return user + " connected\n";
         }
@@ -293,9 +295,8 @@ int main(int argc, char* argv[]) {
                     std::cout << "User " << client.second << " disconnected" << std::endl;
                 }
                 else {
-                    std::cout << "Message is " << trim_newline(buffer) << std::endl;
-                    //std::string response = parse_message(client_socket, trim_newline(buffer));
-                    //write(client_socket, response.c_str(), response.length());  
+                    std::string response = parse_message(client_socket, trim_newline(buffer));
+                    write(client_socket, response.c_str(), response.length());  
                 }
             }
         }
