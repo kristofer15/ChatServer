@@ -198,7 +198,7 @@ void reset_socket_set() {
     FD_ZERO(&settings::get_socket_set());
 
     // reset client sockets
-    for(std::pair<int, std::string> client : settings::get_client_sockets()) {
+    for(auto client : settings::get_client_sockets()) {
         // if valid file descriptor add to set
         int socket = client.first;
         if(socket > 0) {
@@ -318,7 +318,7 @@ int main(int argc, char* argv[]) {
         }
 
         // connection to one of the server sockets
-        for(int server_socket : settings::get_server_sockets()) {
+        for(auto server_socket : settings::get_server_sockets()) {
             if(FD_ISSET(server_socket, &settings::get_socket_set())) {
                 respond_to_knock(server_socket);
             }
@@ -327,7 +327,7 @@ int main(int argc, char* argv[]) {
         int client_socket = 0;
         std::string username = "";
         // find client that sent message
-        for(std::pair<int, std::string> client : settings::get_client_sockets()) {
+        for(auto client : settings::get_client_sockets()) {
             if(FD_ISSET(client.first, &settings::get_socket_set())) {        
                 client_socket = client.first;
                 username = client.second;
