@@ -17,7 +17,7 @@ void help(std::string file_name="client") {
 int main(int argc, char* argv[]) {
 
     if(argc < 5) {
-        help();
+        help(argv[0]);
         return 0;
     }
 
@@ -51,7 +51,6 @@ int main(int argc, char* argv[]) {
 
     struct timeval t;
     t.tv_sec = 100;
-
 
     fd_set socks;
     FD_ZERO(&socks);
