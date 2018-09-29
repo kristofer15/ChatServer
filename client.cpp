@@ -6,9 +6,32 @@
 #include <netdb.h>
 #include <string.h>
 
+#include <fstream>
+#include <vector>
+
+std::string get_dino(std::string dino_file="dino.txt") {
+    std::string dino;
+    std::ifstream file (dino_file);
+    if (file.is_open())
+    {
+        std::string line;
+        while (std::getline(file, line)) {
+            dino += line + "\n";
+        }
+        file.close();
+    }
+
+    // Return empty vector if file could not be read
+    return dino;
+}
 void help(std::string file_name="client") {
-    std::cout << "=== Knockmaster 5000 ===" << std::endl
-                << "Knock a sequence of ports on a specified server" << std::endl
+    std::cout << "=== Knockmaster 5000 ===" << std::endl;
+    std::string dino = get_dino();
+    std::cout << dino << std::endl;
+
+
+
+    std::cout << "Knock a sequence of ports on a specified server" << std::endl
                 << "Communicate once connection has been established" << std::endl
                 << "Usage:" << std::endl
                 << file_name << " {SERVER NAME} {FIRST PORT} {SECOND PORT} {THIRD PORT}" << std::endl;
