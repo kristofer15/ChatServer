@@ -21,6 +21,7 @@
 
 #define PORT    5555
 #define MAXMSG  512
+#define KNOCKING_TIMEOUT 120
 
 void error(const char *msg) {
     perror(msg);
@@ -217,8 +218,8 @@ void reset_socket_set() {
 void respond_to_knock(int receiving_socket) {
     /*
      * Responds to knock on receiving server socket.
-     * Updates knock_status for knocking IP.
-     * If knock_status completed, update sock_set and top_socket, 
+     * Updates get_knock_status for knocking IP.
+     * If get_knock_status completed, update sock_set and top_socket, 
      * and add new socket to client_socket map with username 'anon'.
      */ 
 
@@ -237,7 +238,7 @@ void respond_to_knock(int receiving_socket) {
     // kock on first port in series
     if(receiving_socket == settings::get_server_sockets()[0]) {
         // first knock completed
-        settings::get_knock_status()[client_address] = 1;
+        settings::get_knock_status()[client_address] = std::make_pair(1,time(NULL));
         
         std::cout << "IP " << client_address << " knocked on port " << PORT << std::endl;
         closeSocket(client_sock);
@@ -245,12 +246,11 @@ void respond_to_knock(int receiving_socket) {
 
     // knock on second port in series
     if(receiving_socket == settings::get_server_sockets()[1]) {
-        // if key exists and first knock completed
-        if(settings::get_knock_status()[client_address] == 1) {
-            settings::get_knock_status()[client_address] = 2;
+        if(settings::get_knock_status()[client_address].first == 1) {
+            settings::get_knock_status()[client_address] = std::make_pair(2, time(NULL));
         }
         else { // reset counter or create pair             
-            settings::get_knock_status()[client_address] = 0;
+            settings::get_knock_status()[client_address] = std::make_pair(0, time(NULL));
         }
         
         std::cout << "IP " << client_address << " knocked on port " << PORT+1 << std::endl;
@@ -259,8 +259,11 @@ void respond_to_knock(int receiving_socket) {
 
     // knock on third port in series
     if(receiving_socket == settings::get_server_sockets()[2]) {
-        // if key exists and second knock completed
-        if(settings::get_knock_status()[client_address] == 2) {
+
+        // if second knock completed within timerange
+        time_t then = settings::get_knock_status()[client_address].second;
+        time_t t_diff = difftime(time(NULL), then);
+        if(settings::get_knock_status()[client_address].first == 2 &&  t_diff < KNOCKING_TIMEOUT) {
             // add new socket to map and update top_socket
             settings::get_client_sockets()[client_sock] = "anon";
             settings::get_top_socket() = std::max(settings::get_top_socket(), client_sock);      
@@ -269,9 +272,11 @@ void respond_to_knock(int receiving_socket) {
 
             // knock completed, remove from map
             settings::get_knock_status().erase(client_address); 
+
         }
         else {
-            settings::get_knock_status()[client_address] = 0;
+            //settings::get_get_knock_status()[client_address] = 0;
+            settings::get_knock_status()[client_address] = std::make_pair(0, time(NULL));
 
             std::cout << "IP " << client_address << " knocked on port " << PORT+2 << std::endl;
             closeSocket(client_sock);
@@ -307,7 +312,7 @@ int main(int argc, char* argv[]) {
         // reset socket set for further messages/connections
         reset_socket_set();
         
-        std::cout << "Wating for activity on sockets" << std::endl;
+        std::cout << "Waiting for activity on sockets" << std::endl;
         if(select(settings::get_top_socket()+1, &settings::get_socket_set(), NULL, NULL, NULL) < 0) {
             error("Select failed");
         }

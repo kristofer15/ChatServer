@@ -13,14 +13,13 @@ namespace settings {
         // User name - fd
         std::map<std::string, int> users = {};
 
-        // IP - status
-        std::map<std::string, int> knock_status = {};
-
         // fd - username
         std::map<int, std::string> client_sockets = {};
         std::vector<int> server_sockets = {};
 
-        std::map<std::string, std::pair<int, time_t>> knockers = {};
+        // IP - <status,timestamp>
+        std::map<std::string, std::pair<int, time_t>> knock_status = {};
+
         fd_set socket_set;
         int top_socket;
     };
@@ -50,10 +49,6 @@ namespace settings {
         return ID;
     }
 
-    std::map<std::string, int>& get_knock_status() {
-        return knock_status;
-    }
-
     std::map<std::string, int>& get_users() {
         return users;
     }
@@ -66,8 +61,8 @@ namespace settings {
         return server_sockets;
     }
 
-    std::map<std::string, std::pair<int, time_t>>& get_knockers() {
-        return knockers;
+    std::map<std::string, std::pair<int, time_t>>& get_knock_status() {
+        return knock_status;
     }
 
     fd_set& get_socket_set() {

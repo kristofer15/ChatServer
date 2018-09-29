@@ -6,12 +6,13 @@
 namespace settings {
     void set_new_id();
     std::string get_id();
-    std::map<std::string, int>& get_knock_status();
+
     std::map<std::string, int>& get_users();
     std::map<int, std::string>& get_client_sockets();
-    std::vector<int>& get_server_sockets();
+    std::map<std::string, std::pair<int, time_t>>& get_knock_status();
 
+    std::vector<int>& get_server_sockets();
+    
     fd_set& get_socket_set();
     int& get_top_socket();
-    std::map<std::string, std::pair<int, time_t>>& get_knockers();
 };
