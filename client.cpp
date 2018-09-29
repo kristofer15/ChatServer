@@ -26,8 +26,7 @@ std::string get_dino(std::string dino_file="dino.txt") {
 }
 void help(std::string file_name="client") {
     std::cout << "=== Knockmaster 5000 ===" << std::endl;
-    std::string dino = get_dino();
-    std::cout << dino << std::endl;
+    std::cout << get_dino() << std::endl;
 
 
 
