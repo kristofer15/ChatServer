@@ -130,8 +130,8 @@ void setup_server_socks(int& top_sock) {
         // update top socket index
         top_sock = std::max(top_sock, sock);
 
-        // add newly created socket to list of connected socket file descriptors
-        settings::get_connected_sockets().push_back(sock);
+        // add newly created socket to list of server sockets
+        settings::get_server_sockets().push_back(sock);
 
         bzero((char *) &serv_addr, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
@@ -149,9 +149,20 @@ void setup_server_socks(int& top_sock) {
 }
 
 void reset_socket_set(fd_set& sock_set) {
-     // reset all connected sockets
+    // clear sock_set
     FD_ZERO(&sock_set);
-    for(int sock : settings::get_connected_sockets()) {
+
+    // reset client sockets
+    for(std::pair<int, std::string> element : settings::get_client_sockets()) {
+        // if valid file descriptor add to set
+        int socket = element.first;
+        if(socket > 0) {
+            FD_SET(socket, &sock_set);
+        }
+    }
+
+    // reset server sockets
+    for(int sock : settings::get_server_sockets()) {
         // if valid file descriptor add to set
         if(sock > 0) {
             FD_SET(sock, &sock_set);
@@ -159,7 +170,7 @@ void reset_socket_set(fd_set& sock_set) {
     }
 }
 
-void respond_to_knock(int receiving_socket, const int index, int& top_sock, fd_set& sock_set) {
+void respond_to_knock(int receiving_socket, int& top_sock, fd_set& sock_set) {
     /*
      * Verifies if message to receiving_socket was a knock or not.
      * If knock then:
@@ -182,52 +193,57 @@ void respond_to_knock(int receiving_socket, const int index, int& top_sock, fd_s
     std::string client_address = inet_ntoa(cli_addr.sin_addr);
 
     // kock on first port in series
-    if(index == 0) {
+    if(receiving_socket == settings::get_server_sockets()[0]) {
         // first knock completed
-        settings::get_users()[client_address] = 1;
-        std::cout << "User " << client_address << " knocked on port " << PORT+index << std::endl;
+        settings::get_knock_status()[client_address] = 1;
+        
+        std::cout << "IP " << client_address << " knocked on port " << PORT << std::endl;
         closeSocket(client_sock);
     }
 
     // knock on second port in series
-    if(index == 1) {
+    if(receiving_socket == settings::get_server_sockets()[1]) {
         // if key exists and first knock completed
-        if(settings::get_users()[client_address] == 1) {
-            settings::get_users()[client_address] = 2;
+        if(settings::get_knock_status()[client_address] == 1) {
+            settings::get_knock_status()[client_address] = 2;
         }
         else { // reset counter or create pair             
-            settings::get_users()[client_address] = 0;
+            settings::get_knock_status()[client_address] = 0;
         }
-        std::cout << "User " << client_address << " knocked on port " << PORT+index << std::endl;
+        
+        std::cout << "IP " << client_address << " knocked on port " << PORT+1 << std::endl;
         closeSocket(client_sock);
     }
 
     // knock on third port in series
-    if(index == 2) {
+    if(receiving_socket == settings::get_server_sockets()[2]) {
         // if key exists and second knock completed
-        if(settings::get_users()[client_address] == 2) {
+        if(settings::get_knock_status()[client_address] == 2) {
             // add new socket to list and update top_socket
-            settings::get_connected_sockets().push_back(client_sock);
+            settings::get_client_sockets()[client_sock] = "anon";
             top_sock = std::max(top_sock, client_sock);         
-            std::cout << "User " << client_address << " connected" << std::endl;
+            std::cout << "IP " << client_address << " connected" << std::endl;
+
+            // knock completed, remove from map
+            settings::get_knock_status().erase(client_address); 
         }
         else {
-            settings::get_users()[client_address] = 0;
-            std::cout << "User " << client_address << " knocked on port " << PORT+index << std::endl;
+            settings::get_knock_status()[client_address] = 0;
 
+            std::cout << "IP " << client_address << " knocked on port " << PORT+2 << std::endl;
             closeSocket(client_sock);
         }
     }
 }
 
-void remove_client(int client_socket, fd_set& sock_set, const int index) {
+void remove_client(int client_socket, fd_set& sock_set) {
     // remove client socket
-    settings::get_connected_sockets().erase(settings::get_connected_sockets().begin() + index);
+    settings::get_client_sockets().erase(client_socket);
 
-    // TODO remove client info
-    //settings::get_users().erase();  
-
+    // clear client_socket from socket_set
     FD_CLR(client_socket,&sock_set);
+
+    // close socket
     closeSocket(client_socket);
 }
 
@@ -254,35 +270,28 @@ int main(int argc, char* argv[]) {
             error("Select failed");
         }
 
-        // find which socket the activity was from
-        for(int i = 0; i < settings::get_connected_sockets().size(); ++i) {
-            int socket = settings::get_connected_sockets()[i];
+        // connection to one of the server sockets?
+        for(int server_socket : settings::get_server_sockets()) {
+            if(FD_ISSET(server_socket, &sock_set)) {
+                respond_to_knock(server_socket, top_sock, sock_set);
+            }
+        }
 
-            // activity from this socket?
-            if(FD_ISSET(socket, &sock_set)) {           
-
-                // first 3 ports in list are used for knocking
-                if(i <= 2) {
-                    respond_to_knock(socket, i, top_sock, sock_set);
+        // message from connected client socket
+        for(std::pair<int, std::string> element : settings::get_client_sockets()) {
+            int client_socket = element.first;
+            if(FD_ISSET(client_socket, &sock_set)) {
+                //clear buffer
+                bzero(buffer,256);
+                // zero indicates end of file. AKA client disconnected
+                if(read(client_socket, buffer, 255) == 0) {
+                    remove_client(client_socket, sock_set);
+                    std::cout << "User disconnected" << std::endl; 
                 }
-                else {  // message from connected user
-                    std::cout << "Message from socket " << socket << std::endl;
-
-                    // clear buffer
-                    bzero(buffer,256);
-                    // zero indicates end of file. AKA client disconnected
-                    if(read(socket, buffer, 255) == 0) {
-                        remove_client(socket, sock_set, i);
-                        std::cout << "User disconnected" << std::endl; 
-                    }
-                    else {
-                        std::cout << "Message is " << trim_newline(buffer) << std::endl;
-
-                        // TODO make data structure that can hold onto user's ip, socket, and knocking counter
-
-                        //std::string response = parse_message(socket, trim_newline(buffer));
-                        //write(socket, response.c_str(), response.length());  
-                    } 
+                else {
+                    std::cout << "Message is " << trim_newline(buffer) << std::endl;
+                    //std::string response = parse_message(client_socket, trim_newline(buffer));
+                    //write(client_socket, response.c_str(), response.length());  
                 }
             }
         }

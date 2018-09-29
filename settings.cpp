@@ -10,7 +10,9 @@ namespace settings {
         // Classless privates
         std::string ID = "";
         std::map<std::string, int> users = {};
-        std::vector<int> connected_sockets = {};
+        std::map<std::string, int> knock_status = {};
+        std::map<int, std::string> client_sockets = {};
+        std::vector<int> server_sockets = {};
     };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
@@ -42,7 +44,15 @@ namespace settings {
         return users;
     }
 
-    std::vector<int>& get_connected_sockets() {
-        return connected_sockets;
+    std::map<int, std::string>& get_client_sockets() {
+        return client_sockets;
+    }
+
+    std::map<std::string, int>& get_knock_status() {
+        return knock_status;
+    }
+
+    std::vector<int>& get_server_sockets() {
+        return server_sockets;
     }
 };
