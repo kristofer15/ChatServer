@@ -6,10 +6,18 @@
 #include <netdb.h>
 #include <string.h>
 
+void help(std::string file_name="client") {
+    std::cout << "=== Knockmaster 5000 ===" << std::endl
+                << "Knock a sequence of ports on a specified server" << std::endl
+                << "Communicate once connection has been established" << std::endl
+                << "Usage:" << std::endl
+                << file_name << " {SERVER NAME} {FIRST PORT} {SECOND PORT} {THIRD PORT}" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
 
     if(argc < 5) {
-        std::cout << "Missing arguments" << std::endl;
+        help();
         return 0;
     }
 
@@ -58,6 +66,7 @@ int main(int argc, char* argv[]) {
             std::getline(std::cin, message);
             write(s, message.c_str(), message.length());  
         }
+
         if(FD_ISSET(s, &socks)) {
             char buffer[256];
             memset(buffer, 0, sizeof(buffer));
