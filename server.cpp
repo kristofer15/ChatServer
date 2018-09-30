@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "settings.h"
+#include "file_io.h"
 
 #define PORT    5555
 #define MAXMSG  512
@@ -154,10 +155,13 @@ std::string parse_command(int client_sock, std::string command) {
 
     // .compare returns 0 with identical strings
     if(command.compare("ID") == 0) {
+        log("ID taken:\n" + settings::get_id());
         return settings::get_id() + "\n";
     }
 
     if(command.compare("CHANGE ID") == 0) {
+        log("CHANGE ID received");
+
         settings::set_new_id();
         return "Set new id: " + settings::get_id() + "\n";
     }
