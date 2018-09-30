@@ -42,7 +42,6 @@ class Knocker {
 
             int s;
             for(int port : ports) {
-                std::cout << "Knocking on " << port << std::endl;
                 s = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
                 destination_in.sin_port = htons(port);
                 connect(s, (struct sockaddr *) &destination_in, sizeof(destination_in));

@@ -41,6 +41,8 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    std::cout << "Socket connected" << std::endl;
+
     struct timeval t;
     t.tv_sec = 100;
 
