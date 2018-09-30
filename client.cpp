@@ -66,7 +66,6 @@ int main(int argc, char* argv[]) {
         s = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         destination_in.sin_port = htons(atoi(port));
         connect(s, (struct sockaddr *) &destination_in, sizeof(destination_in));
-        std::cout << s << port << std::endl;
     }
 
     struct timeval t;

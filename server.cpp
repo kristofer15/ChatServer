@@ -83,24 +83,47 @@ void remove_socket(int socket, fd_set& sock_set) {
     closeSocket(socket);
 }
 
-std::string parse_message(int client_sock, std::string message) {
+// Get word #from in str
+// Optionally return multiple words
+std::string get_word(std::string str, int from, int count=1, char delimiter=' ') {
+    int start = 0;
+    int end = 0;
+    int word = 0;
+
+    for(int i = 0; i < str.length(); ++i) {
+        end = i;
+
+        if(str[i] == delimiter) {
+            ++word;
+            if(from == word)  { start = i+1; };
+            if((from+count) == word) { break; }
+        }
+    }
+
+    if(start < from) { return ""; }
+    if(end == str.length()-1) { ++end; }
+
+    return str.substr(start, end-start);
+}
+
+std::string parse_command(int client_sock, std::string command) {
 
     // .compare returns 0 with identical strings
-    if(message.compare("ID") == 0) {
+    if(command.compare("ID") == 0) {
         return settings::get_id() + "\n";
     }
 
-    if(message.compare("CHANGE ID") == 0) {
+    if(command.compare("CHANGE ID") == 0) {
         settings::set_new_id();
         return "Set new id: " + settings::get_id() + "\n";
     }
 
     // Starts with "CONNECT "
-    if(message.compare(0, 8, "CONNECT ") == 0) {
+    if(command.compare(0, 8, "CONNECT ") == 0) {
 
-        // Only accept connections containing a single space
-        if(std::count(message.begin(), message.end(), ' ') == 1) {
-            std::string user = message.substr(message.rfind(" ") + 1);
+        // Only accept commands containing a single space
+        if(std::count(command.begin(), command.end(), ' ') == 1) {
+            std::string user = command.substr(command.rfind(" ") + 1);
 
             if(user.compare("ALL") == 0) {
                 return "Stop that";
@@ -114,7 +137,7 @@ std::string parse_message(int client_sock, std::string message) {
         }
     }
 
-    if(message.compare("WHO") == 0) {
+    if(command.compare("WHO") == 0) {
         std::stringstream connectedUsers;
         connectedUsers << "Connected users: \n";
 
@@ -125,20 +148,25 @@ std::string parse_message(int client_sock, std::string message) {
         return connectedUsers.str();
     }
 
-    if(message.compare(0, 4, "MSG ") == 0) {
-        if(std::count(message.begin(), message.end(), ' ') == 1) {
-            std::string user = message.substr(message.rfind(' ') + 1);
+    if(command.compare(0, 4, "MSG ") == 0) {
+        int words = std::count(command.begin(), command.end(), ' ');
+
+        if(words > 1) {
+            std::string user = get_word(command, 1);
+            std::string message = get_word(command, 2, 999) + "\n" ;
 
             if(user.compare("ALL") == 0) {
                 for(auto name_socket : settings::get_users()) {
-                    write(name_socket.second, (message + '\n').c_str(), message.length()+1);
+                    write(name_socket.second, message.c_str(), message.length());
                 }
 
-                return "Messaged all users" + '\n';
+                return "Messaged all users\n";
             }
+
             if(settings::get_users().find(user) != settings::get_users().end()) {
-                write(settings::get_users()[user], (message + '\n').c_str(), message.length()+1);
-                return "Message to: " + user + '\n';
+                write(settings::get_users()[user], message.c_str(), message.length());
+
+                return "Messaged " + user + '\n';
             }
             else {
                 return "No such user\n";
@@ -146,11 +174,11 @@ std::string parse_message(int client_sock, std::string message) {
         }
     }
 
-    if(message.compare("LEAVE") == 0) {
+    if(command.compare("LEAVE") == 0) {
         disconnect_user(client_sock);
     }
 
-    return "Your answer: " + message + "\nCorrect answer: " + message + "\n";
+    return "Your answer: " + command + "\nCorrect answer: " + command + "\n";
 }
 
 void setup_server_socks() {
@@ -284,7 +312,7 @@ void respond_to_knock(int receiving_socket) {
     }
 }
 
-void respond_to_message(int client_socket, std::string username, char* buffer) {
+void respond_to_command(int client_socket, std::string username, char* buffer) {
     //clear buffer
     bzero(buffer,256);
     // zero indicates end of file. AKA client disconnected
@@ -292,7 +320,7 @@ void respond_to_message(int client_socket, std::string username, char* buffer) {
         disconnect_user(client_socket);
     }
     else {
-        std::string response = parse_message(client_socket, trim_newline(buffer));
+        std::string response = parse_command(client_socket, trim_newline(buffer));
         write(client_socket, response.c_str(), response.length());  
     }
 }
@@ -309,7 +337,7 @@ int main(int argc, char* argv[]) {
 
     while(true) {
 
-        // reset socket set for further messages/connections
+        // reset socket set for further commands/connections
         reset_socket_set();
         
         std::cout << "Waiting for activity on sockets" << std::endl;
@@ -326,7 +354,7 @@ int main(int argc, char* argv[]) {
 
         int client_socket = 0;
         std::string username = "";
-        // find client that sent message
+        // find client that sent command
         for(std::pair<int, std::string> client : settings::get_client_sockets()) {
             if(FD_ISSET(client.first, &settings::get_socket_set())) {        
                 client_socket = client.first;
@@ -334,9 +362,9 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // respond to message
+        // respond to command
         if(FD_ISSET(client_socket, &settings::get_socket_set())) {
-            respond_to_message(client_socket, username, buffer);
+            respond_to_command(client_socket, username, buffer);
         }
         
     }
