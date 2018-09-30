@@ -106,6 +106,28 @@ std::string get_word(std::string str, int from, int count=1, char delimiter=' ')
     return str.substr(start, end-start);
 }
 
+std::string connect_user(int client_sock, std::string user) {
+    if(user.compare("ALL") == 0) {
+        return "Stop that";
+    }
+
+    // create new user and update client_socket map
+    settings::get_users().insert(std::make_pair(user, client_sock));
+    settings::get_client_sockets()[client_sock] = user;
+
+    return user + " connected\n";
+}
+
+std::string list_users(){
+    std::stringstream connectedUsers;
+
+    for(auto pair : settings::get_users()) {
+        connectedUsers << pair.first + "\n";
+    }
+
+    return connectedUsers.str();
+}
+
 std::string parse_command(int client_sock, std::string command) {
 
     // .compare returns 0 with identical strings
@@ -124,28 +146,12 @@ std::string parse_command(int client_sock, std::string command) {
         // Only accept commands containing a single space
         if(std::count(command.begin(), command.end(), ' ') == 1) {
             std::string user = command.substr(command.rfind(" ") + 1);
-
-            if(user.compare("ALL") == 0) {
-                return "Stop that";
-            }
-
-            // create new user and update client_socket map
-            settings::get_users().insert(std::make_pair(user, client_sock));
-            settings::get_client_sockets()[client_sock] = user;
-
-            return user + " connected\n";
+            return connect_user(client_sock, user);
         }
     }
 
     if(command.compare("WHO") == 0) {
-        std::stringstream connectedUsers;
-        connectedUsers << "Connected users: \n";
-
-        for(auto pair : settings::get_users()) {
-            connectedUsers << pair.first + "\n";
-        }
-
-        return connectedUsers.str();
+        return "Connected users: \n" + list_users();
     }
 
     if(command.compare(0, 4, "MSG ") == 0) {
@@ -171,6 +177,8 @@ std::string parse_command(int client_sock, std::string command) {
             else {
                 return "No such user\n";
             }
+
+            return "MSG command must be followed by a username/ALL and a message in the same line\n";
         }
     }
 
