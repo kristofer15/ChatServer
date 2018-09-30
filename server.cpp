@@ -188,7 +188,7 @@ std::string parse_command(int client_sock, std::string command) {
         if(words > 1) {
             std::string user = get_word(command, 1);
             std::string message = get_word(command, 2, 999) + "\n" ;
-            message_user(user, message);
+            return message_user(user, message);
         }
 
         return "MSG command must be followed by a username/ALL and a message in the same line\n";
