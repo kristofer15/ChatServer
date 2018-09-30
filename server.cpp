@@ -394,7 +394,6 @@ int main(int argc, char* argv[]) {
         if(FD_ISSET(client_socket, &settings::get_socket_set())) {
             respond_to_command(client_socket, username, buffer);
         }
-        
     }
 
     thief.join();

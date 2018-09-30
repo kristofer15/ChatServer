@@ -1,3 +1,6 @@
+#ifndef FILE_IO_H
+#define FILE_IO_H
+
 #include <fstream>
 #include <vector>
 #include <iostream>
@@ -47,3 +50,5 @@ public:
         file << text << std::endl << std::endl;
     }
 };
+
+#endif

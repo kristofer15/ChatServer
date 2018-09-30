@@ -11,7 +11,7 @@
 
 class Knocker {
     public:
-        Knocker(char* h, int p[3]) {
+        Knocker(const char* h, int p[3]) {
             host = h;
 
             // C++ methods are being obtuse as usual.
@@ -51,6 +51,6 @@ class Knocker {
         }
 
     private:
-        char* host;
+        const char* host;
         int ports[3];
 };
