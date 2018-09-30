@@ -39,7 +39,7 @@ namespace settings {
             id << buffer;
         }
 
-        id << time(NULL) << std::endl << "Group x";
+        id << time(NULL) << std::endl << "Group 49";
         ID = id.str();
     }
 
