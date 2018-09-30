@@ -14,8 +14,9 @@
 
 
 void help(std::string file_name="client") {
+    File_io io;
     std::cout << "=== Knockmaster 5000 ===" << std::endl;
-    std::cout << read_file("dino.txt") << std::endl;
+    std::cout << io.read_file("dino.txt") << std::endl;
 
     std::cout << "Knock a sequence of ports on a specified server" << std::endl
                 << "Communicate once connection has been established" << std::endl

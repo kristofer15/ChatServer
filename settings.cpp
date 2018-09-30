@@ -1,4 +1,3 @@
-#include <sstream>
 #include "settings.h"
 
 namespace settings {
@@ -22,6 +21,10 @@ namespace settings {
 
         fd_set socket_set;
         int top_socket;
+
+        int server_ports[3] = {34532, 34533, 34534};
+
+        File_io io;
     };
 
     // Yoinked from: https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
@@ -71,5 +74,13 @@ namespace settings {
 
     int& get_top_socket() {
         return top_socket;
+    }
+
+    int* get_server_ports() {
+        return server_ports;
+    }
+
+    File_io get_io() {
+        return io;
     }
 };

@@ -1,7 +1,9 @@
 #include <string.h>
+#include <sstream>
 #include <map>
 #include <iostream>
 #include <vector>
+#include "file_io.h"
 
 namespace settings {
     void set_new_id();
@@ -15,4 +17,7 @@ namespace settings {
     
     fd_set& get_socket_set();
     int& get_top_socket();
+    int* get_server_ports();
+
+    File_io get_io();
 };

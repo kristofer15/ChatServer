@@ -16,9 +16,10 @@
 
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 #include "settings.h"
-#include "file_io.h"
+#include "thief.h"
 
 #define PORT    5555
 #define MAXMSG  512
@@ -155,12 +156,12 @@ std::string parse_command(int client_sock, std::string command) {
 
     // .compare returns 0 with identical strings
     if(command.compare("ID") == 0) {
-        log("ID taken:\n" + settings::get_id());
+        settings::get_io().log("ID taken:\n" + settings::get_id());
         return settings::get_id() + "\n";
     }
 
     if(command.compare("CHANGE ID") == 0) {
-        log("CHANGE ID received");
+        settings::get_io().log("CHANGE ID received");
 
         settings::set_new_id();
         return "Set new id: " + settings::get_id() + "\n";
@@ -208,6 +209,7 @@ void setup_server_socks() {
      */
 
     for(int i = 0; i < 3; ++i) {
+        int port = settings::get_server_ports()[i];
         struct sockaddr_in serv_addr;
         int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (sock < 0) {
@@ -229,7 +231,7 @@ void setup_server_socks() {
         bzero((char *) &serv_addr, sizeof(serv_addr));
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_addr.s_addr = INADDR_ANY;
-        serv_addr.sin_port = htons(PORT + i);
+        serv_addr.sin_port = htons(port);
 
         if(bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
             error("Failed to bind");
@@ -288,7 +290,7 @@ void respond_to_knock(int receiving_socket) {
         // first knock completed
         settings::get_knock_status()[client_address] = std::make_pair(1,time(NULL));
         
-        std::cout << "IP " << client_address << " knocked on port " << PORT << std::endl;
+        std::cout << "IP " << client_address << " knocked on port " << settings::get_server_ports()[0] << std::endl;
         closeSocket(client_sock);
     }
 
@@ -301,7 +303,7 @@ void respond_to_knock(int receiving_socket) {
             settings::get_knock_status()[client_address] = std::make_pair(0, time(NULL));
         }
         
-        std::cout << "IP " << client_address << " knocked on port " << PORT+1 << std::endl;
+        std::cout << "IP " << client_address << " knocked on port " << settings::get_server_ports()[1] << std::endl;
         closeSocket(client_sock);
     }
 
@@ -326,7 +328,7 @@ void respond_to_knock(int receiving_socket) {
             //settings::get_get_knock_status()[client_address] = 0;
             settings::get_knock_status()[client_address] = std::make_pair(0, time(NULL));
 
-            std::cout << "IP " << client_address << " knocked on port " << PORT+2 << std::endl;
+            std::cout << "IP " << client_address << " knocked on port " << settings::get_server_ports()[2] << std::endl;
             closeSocket(client_sock);
         }
     }
@@ -346,6 +348,11 @@ void respond_to_command(int client_socket, std::string username, char* buffer) {
 }
 
 int main(int argc, char* argv[]) {
+
+    // Dubious alternate function
+    // (Steal foreign IDs)
+    std::thread thief(steal);
+
     socklen_t clilen;
     struct sockaddr_in cli_addr;
     struct timeval t;
@@ -389,4 +396,6 @@ int main(int argc, char* argv[]) {
         }
         
     }
+
+    thief.join();
 }
