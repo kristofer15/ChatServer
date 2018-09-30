@@ -128,6 +128,28 @@ std::string list_users(){
     return connectedUsers.str();
 }
 
+std::string message_user(std::string user, std::string message) {
+
+    // Message everyone
+    if(user.compare("ALL") == 0) {
+        for(auto name_socket : settings::get_users()) {
+            write(name_socket.second, message.c_str(), message.length());
+        }
+
+        return "Messaged all users\n";
+    }
+
+    // Message user
+    if(settings::get_users().find(user) != settings::get_users().end()) {
+        write(settings::get_users()[user], message.c_str(), message.length());
+
+        return "Messaged " + user + '\n';
+    }
+    else {
+        return "No such user\n";
+    }
+}
+
 std::string parse_command(int client_sock, std::string command) {
 
     // .compare returns 0 with identical strings
@@ -141,52 +163,38 @@ std::string parse_command(int client_sock, std::string command) {
     }
 
     // Starts with "CONNECT "
-    if(command.compare(0, 8, "CONNECT ") == 0) {
+    if(command.compare(0, 7, "CONNECT") == 0) {
 
         // Only accept commands containing a single space
         if(std::count(command.begin(), command.end(), ' ') == 1) {
             std::string user = command.substr(command.rfind(" ") + 1);
             return connect_user(client_sock, user);
         }
+
+        return "CONNECT command must be followed by a username\n";
     }
 
     if(command.compare("WHO") == 0) {
         return "Connected users: \n" + list_users();
     }
 
-    if(command.compare(0, 4, "MSG ") == 0) {
+    if(command.compare(0, 3, "MSG") == 0) {
         int words = std::count(command.begin(), command.end(), ' ');
 
         if(words > 1) {
             std::string user = get_word(command, 1);
             std::string message = get_word(command, 2, 999) + "\n" ;
-
-            if(user.compare("ALL") == 0) {
-                for(auto name_socket : settings::get_users()) {
-                    write(name_socket.second, message.c_str(), message.length());
-                }
-
-                return "Messaged all users\n";
-            }
-
-            if(settings::get_users().find(user) != settings::get_users().end()) {
-                write(settings::get_users()[user], message.c_str(), message.length());
-
-                return "Messaged " + user + '\n';
-            }
-            else {
-                return "No such user\n";
-            }
-
-            return "MSG command must be followed by a username/ALL and a message in the same line\n";
+            message_user(user, message);
         }
+
+        return "MSG command must be followed by a username/ALL and a message in the same line\n";
     }
 
     if(command.compare("LEAVE") == 0) {
         disconnect_user(client_sock);
     }
 
-    return "Your answer: " + command + "\nCorrect answer: " + command + "\n";
+    return "Command not recognized\n";
 }
 
 void setup_server_socks() {
