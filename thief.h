@@ -11,33 +11,34 @@
 
 // Request an ID and return the following response
 std::string get_id(int sock) {
-    char buffer[1000];
-    memset(buffer, 0, sizeof(buffer));
+    char response[256];
 
-    // Discard any queued welcome messages
-    // Return if the socket has been closed
-    if(!read(sock, buffer, 255)) {
-        return "";
-    }
-
-    std::string command = "ID";
-    send(sock, command.c_str(), command.length(), MSG_NOSIGNAL);
+    memset(response, 0, sizeof(response));
 
     struct timeval t;
     t.tv_sec = 3;
 
     fd_set socks;
-    FD_ZERO(&socks);
-    FD_SET(sock, &socks);
-    select(sock+1, &socks, NULL, NULL, &t);
-
-    if(FD_ISSET(sock, &socks)) {
-        memset(buffer, 0, sizeof(buffer));
-        read(sock, buffer, 255);
-
-        command = "CHANGE ID";
+    std::string commands[2] = {"CONNECT TOLVUTHRJOTUR", "ID"};    
+    for(std::string command : commands) {
         send(sock, command.c_str(), command.length(), MSG_NOSIGNAL);
-        return buffer;
+
+        FD_ZERO(&socks);
+        FD_SET(sock, &socks);
+        select(sock+1, &socks, NULL, NULL, &t);
+
+        if(FD_ISSET(sock, &socks)) {
+            memset(response, 0, sizeof(response));
+            int response_length = read(sock, response, 255);
+
+            if(command.compare("ID") == 0) {
+                std::cout << response << std::endl;
+
+                command = "CHANGE ID";
+                send(sock, command.c_str(), command.length(), MSG_NOSIGNAL);
+                return response;
+            }
+        }
     }
 
     return "";
@@ -50,31 +51,32 @@ void steal() {
     signal (SIGPIPE, SIG_IGN);
 
     File_io io;
-    Knocker k;
+    Knocker knocker;
 
     // Ports are added to the file manually
     std::vector<int> ports = settings::get_io().get_lines<int>("ports.txt");
     std::string host = "localhost";
 
     std::cout << "Stealing IDs" << std::endl;
+
+    // Assume that groups actually want to be found and
+    // only knock ports in ascending orde
     for(int port1 : ports) {
         for(int port2 : ports) {
-            for(int port3: ports) {
+            for(int port3 : ports) {
 
-                // Wait for 50ms to avoid stack smashing
-                usleep(50000);
-                
-                // A port is repeated
-                if(port1 == port2 || port2 == port3 || port1 == port3) {
-                    continue;
-                }
+                if(port1 == port2 || port2 == port3 || port1 == port3) { continue; }
+
+                // Wait for 10ms to avoid stack smashing
+                // usleep(10000);
 
                 int ports[3] = {port1, port2, port3};
-                Knocker k;
-                int sock = k.knock(host.c_str(), ports);
+                int sock = knocker.knock(host.c_str(), ports);
 
                 // Knock returned a seemingly valid socket
                 if(sock < 1) { continue; }
+
+                std::cout << "Connected to port sequence " << port1 << " " << port2 << " " << port3 << std::endl;
 
                 // Attempt to get an ID from the socket
                 std::string result = get_id(sock);

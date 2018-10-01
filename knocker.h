@@ -38,15 +38,15 @@ class Knocker {
                 s = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
                 destination_in.sin_port = htons(port);
                 connect(s, (struct sockaddr *) &destination_in, sizeof(destination_in));
-                
-                int error_code;
-                socklen_t error_code_size = sizeof(error_code);
-                getsockopt(s, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
-                
-                // Socket is not connected
-                if(error_code == 111) {
-                    return -1;
-                }
+            }
+
+            int error_code;
+            socklen_t error_code_size = sizeof(error_code);
+            getsockopt(s, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
+            
+            // Socket is not connected
+            if(error_code == 111) {
+                return -1;
             }
 
             return s;
