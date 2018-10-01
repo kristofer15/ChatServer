@@ -34,8 +34,8 @@ int main(int argc, char* argv[]) {
     char* host_name = argv[1];
     int port_sequence[3] = {atoi(argv[2]), atoi(argv[3]), atoi(argv[4])};
 
-    Knocker k(host_name, port_sequence);
-    int s = k.knock();
+    Knocker k;
+    int s = k.knock(host_name, port_sequence);
 
     if(s < 1) { 
         std::cout << "Could not connect to server" << std::endl;

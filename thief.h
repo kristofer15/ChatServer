@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <csignal>
 #include <vector>
 
 #include "knocker.h"
@@ -10,10 +11,7 @@
 
 // Request an ID and return the following response
 std::string get_id(int sock) {
-    
-    std::cout << "Socket connected" << std::endl;
-
-    char buffer[256];
+    char buffer[1000];
     memset(buffer, 0, sizeof(buffer));
 
     // Discard any queued welcome messages
@@ -23,7 +21,7 @@ std::string get_id(int sock) {
     }
 
     std::string command = "ID";
-    write(sock, command.c_str(), command.length());
+    send(sock, command.c_str(), command.length(), MSG_NOSIGNAL);
 
     struct timeval t;
     t.tv_sec = 3;
@@ -38,7 +36,7 @@ std::string get_id(int sock) {
         read(sock, buffer, 255);
 
         command = "CHANGE ID";
-        write(sock, command.c_str(), command.length());
+        send(sock, command.c_str(), command.length(), MSG_NOSIGNAL);
         return buffer;
     }
 
@@ -48,8 +46,11 @@ std::string get_id(int sock) {
 // Brute force given port numbers and log any response from get_id() that looks like a message
 void steal() {
 
+    // Ignore broken pipes
     signal (SIGPIPE, SIG_IGN);
+
     File_io io;
+    Knocker k;
 
     // Ports are added to the file manually
     std::vector<int> ports = settings::get_io().get_lines<int>("ports.txt");
@@ -59,7 +60,9 @@ void steal() {
     for(int port1 : ports) {
         for(int port2 : ports) {
             for(int port3: ports) {
-                usleep(200000);
+
+                // Wait for 50ms to avoid stack smashing
+                usleep(50000);
                 
                 // A port is repeated
                 if(port1 == port2 || port2 == port3 || port1 == port3) {
@@ -67,8 +70,8 @@ void steal() {
                 }
 
                 int ports[3] = {port1, port2, port3};
-                Knocker k(host.c_str(), ports);
-                int sock = k.knock();
+                Knocker k;
+                int sock = k.knock(host.c_str(), ports);
 
                 // Knock returned a seemingly valid socket
                 if(sock < 1) { continue; }
