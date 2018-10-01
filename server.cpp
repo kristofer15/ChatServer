@@ -32,7 +32,6 @@ void error(const char *msg) {
 
 void closeSocket(int fd) {
     if (fd >= 0) {
-
         if (close(fd) < 0) { // finally call close()
             error("Unable to close socket");
         }
@@ -335,7 +334,7 @@ void respond_to_command(int client_socket, std::string username, char* buffer) {
     //clear buffer
     bzero(buffer,256);
     // zero indicates end of file. AKA client disconnected
-    if(read(client_socket, buffer, 255) < 0) {
+    if(read(client_socket, buffer, 255) <= 0) {
         disconnect_user(client_socket);
     }
     else {
